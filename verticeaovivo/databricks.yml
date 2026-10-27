@@ -1,0 +1,40 @@
+# This is a Declarative Automation Bundle definition for verticeaovivo.
+# See https://docs.databricks.com/dev-tools/bundles/index.html for documentation.
+bundle:
+  name: verticeaovivo
+  uuid: 678a4693-372b-4cae-842a-7d41801e1c91
+
+include:
+  - resources/*.yml
+
+variables:
+  catalog:
+    description: O catálogo do lakehouse
+    default: lakehouse_vertice
+  warehouse_id:
+    description: ID do SQL Warehouse
+    default: d7c0893164f2ddaf
+  s3_endpoint:
+    description: Endpoint S3 do Supabase
+  aws_default_region:
+    description: Região AWS
+  s3_access_key_id:
+    description: Chave de acesso S3
+  s3_secret_access_key:
+    description: Chave secreta S3
+
+targets:
+  dev:
+    default: true
+    workspace:
+      host: https://dbc-931c5a9a-ff7e.cloud.databricks.com
+    presets:
+      trigger_pause_status: PAUSED
+  prod:
+    mode: production
+    workspace:
+      host: https://dbc-931c5a9a-ff7e.cloud.databricks.com
+      root_path: /Workspace/Users/gabii77leone@gmail.com/.bundle/${bundle.name}/${bundle.target}
+    permissions:
+      - user_name: gabii77leone@gmail.com
+        level: CAN_MANAGE

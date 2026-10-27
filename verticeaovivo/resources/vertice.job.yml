@@ -1,0 +1,70 @@
+# Job vertice_farol — Torre de Controle da Vértice Tecnologia (toda segunda às 6h)
+# As 6 tarefas do job:
+#   1. ingestao_feriados   : carrega bronze.feriados a partir da BrasilAPI (notebook serverless, em paralelo com ingestao_data_lake)
+#   2. ingestao_data_lake  : baixa arquivos do Supabase S3 para o volume bronze.raw e recria as 9 tabelas da bronze
+#   3. conferencia_bronze  : valida a contagem das 9 tabelas bronze contra a seed 42 antes de avançar para a silver/gold
+#   4. medalhao            : pipeline declarativo Lakeflow (vertice_medalhao) que constrói as 7 tabelas silver e 3 tabelas gold
+#   5. testes_de_qualidade : executa os 10 testes de qualidade e reconciliação sobre a silver e a gold (em paralelo com status_com_ia)
+#   6. status_com_ia       : classifica e extrai bloqueios de silver.status_semanal em gold.status_estruturado (regra + regex + IA v2.0)
+
+resources:
+  jobs:
+    vertice_farol:
+      name: vertice_farol
+      schedule:
+        quartz_cron_expression: "16 0 6 ? * MON"
+        timezone_id: America/Sao_Paulo
+        pause_status: PAUSED
+      email_notifications:
+        no_alert_for_skipped_runs: false
+      max_concurrent_runs: 1
+      queue:
+        enabled: true
+      performance_target: PERFORMANCE_OPTIMIZED
+      tasks:
+        - task_key: ingestao_feriados
+          notebook_task:
+            notebook_path: ../src/ingestao/01_ingestao_api_gabarito.py
+            source: WORKSPACE
+          environment_key: Default
+        - task_key: ingestao_data_lake
+          notebook_task:
+            notebook_path: ../src/ingestao/02_ingestao_boto3_gabarito.py
+            source: WORKSPACE
+            base_parameters:
+              S3_ENDPOINT: ${var.s3_endpoint}
+              AWS_DEFAULT_REGION: ${var.aws_default_region}
+              AWS_ACCESS_KEY_ID: ${var.s3_access_key_id}
+              AWS_SECRET_ACCESS_KEY: ${var.s3_secret_access_key}
+          environment_key: Default
+        - task_key: conferencia_bronze
+          depends_on:
+            - task_key: ingestao_feriados
+            - task_key: ingestao_data_lake
+          sql_task:
+            file:
+              path: ../src/conferencia/00-conferencia-bronze.sql
+            warehouse_id: ${var.warehouse_id}
+        - task_key: medalhao
+          depends_on:
+            - task_key: conferencia_bronze
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.vertice_medalhao.id}
+        - task_key: testes_de_qualidade
+          depends_on:
+            - task_key: medalhao
+          sql_task:
+            file:
+              path: ../src/testes/testes.sql
+            warehouse_id: ${var.warehouse_id}
+        - task_key: status_com_ia
+          depends_on:
+            - task_key: medalhao
+          sql_task:
+            file:
+              path: ../src/ia/status_estruturado.sql
+            warehouse_id: ${var.warehouse_id}
+      environments:
+        - environment_key: Default
+          spec:
+            environment_version: "6"
