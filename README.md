@@ -37,9 +37,6 @@ verticeaovivo/
 ├── pyproject.toml   # Configurações e dependências Python
 └── README.md        # Documentação do projeto
 
-
-Observação: a estrutura acima foi montada com base nos diretórios e arquivos visíveis na imagem. Os conteúdos internos ainda precisam ser verificados.
-
 ## 📚 Conhecimentos desenvolvidos
 
 Durante a experiência, o foco esteve no contato prático com tecnologias e conceitos relacionados a:
